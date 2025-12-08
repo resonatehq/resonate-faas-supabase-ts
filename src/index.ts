@@ -76,6 +76,7 @@ export class Resonate {
 				);
 			}
 
+			console.log(req)
 			const url = buildForwardedURL(req);
 			console.log("URL", url);
 			const body: any = await req.json();
@@ -192,10 +193,36 @@ export class Resonate {
 }
 
 function buildForwardedURL(req: Request) {
-	const proto = req.headers.get("x-forwarded-proto") ?? "http";
-	const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-	const port = req.headers.get("x-forwarded-port");
-	const path = req.headers.get("x-forwarded-path");
+  const headers = req.headers;
+  const url = new URL(req.url);
 
-	return `${proto}://${host}${port ? `:${port}` : ""}${path}`;
+  // 1. Hostname Logic
+  // Dev: "x-forwarded-host" is present (e.g., 127.0.0.1)
+  // Prod: "x-forwarded-host" is missing, so we use url.hostname (e.g., project.supabase.co)
+  const forwardedHost = headers.get("x-forwarded-host");
+  const host = forwardedHost ?? url.hostname;
+
+  // 2. Protocol Logic
+  // Always prefer "x-forwarded-proto" (usually https in prod), fallback to "http"
+  const proto = headers.get("x-forwarded-proto") ?? "http";
+
+  // 3. Port Logic
+  // Dev: We need the port (e.g., :54321).
+  // Prod: We rarely need :443 explicitly in the URL string.
+  const forwardedPort = headers.get("x-forwarded-port");
+  const port = (forwardedHost && forwardedPort) ? `:${forwardedPort}` : "";
+
+  // 4. Path Logic
+  // Dev: "x-forwarded-path" contains the full path (/functions/v1/hello-world)
+  // Prod: We must use url.pathname.
+  let path = headers.get("x-forwarded-path") ?? url.pathname;
+
+  // 5. Production Path Fix
+  // In Prod, the internal req.url often strips '/functions/v1'.
+  // We re-add it if we are in Prod (no forwardedHost) and it's missing.
+  if (!forwardedHost && !path.startsWith("/functions/v1")) {
+    path = `/functions/v1${path}`;
+  }
+
+  return `${proto}://${host}${port}${path}`;
 }
