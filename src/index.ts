@@ -76,9 +76,7 @@ export class Resonate {
 				);
 			}
 
-			console.log(req)
 			const url = buildForwardedURL(req);
-			console.log("URL", url);
 			const body: any = await req.json();
 
 			if (!req.body) {
