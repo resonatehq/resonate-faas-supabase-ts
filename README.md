@@ -1,1 +1,1 @@
-# resonate-faas-supabase-ts
+# @resonatehq/supabase
