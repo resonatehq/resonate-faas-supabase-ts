@@ -199,6 +199,18 @@ export class Resonate {
 			);
 		}
 	}
+
+	public httpHandler(): Deno.HttpServer {
+		return Deno.serve(async (req: Request) => {
+			const resp = await this.handler(req);
+			return new Response(JSON.stringify(resp), {
+				headers: {
+					"Content-Type": "application/json",
+					Connection: "keep-alive",
+				},
+			});
+		});
+	}
 }
 
 function buildForwardedURL(req: Request) {
