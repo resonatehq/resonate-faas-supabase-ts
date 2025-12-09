@@ -13,6 +13,8 @@ import {
 	type Encryptor,
 	NoopEncryptor,
 } from "@resonatehq/sdk/dist/src/encryptor";
+import { OptionsBuilder } from "@resonatehq/sdk/dist/src/options";
+import { NoopTracer } from "@resonatehq/sdk/dist/src/tracer";
 
 export class Resonate {
 	private registry = new Registry();
@@ -107,6 +109,8 @@ export class Resonate {
 			}
 
 			const encoder = new JsonEncoder();
+			const clock = new WallClock();
+			const tracer = new NoopTracer();
 			const network = new HttpNetwork({
 				headers: {},
 				timeout: 60 * 1000, // 60s
@@ -115,68 +119,75 @@ export class Resonate {
 			});
 
 			const resonateInner = new ResonateInner({
-				anycastNoPreference: url,
-				anycastPreference: url,
-				clock: new WallClock(),
-				dependencies: this.dependencies,
-				handler: new Handler(network, encoder, this.encryptor),
-				heartbeat: new NoopHeartbeat(),
-				network,
-				pid: `pid-${Math.random().toString(36).substring(7)}`,
-				registry: this.registry,
-				ttl: 30 * 1000, // 30s
 				unicast: url,
+				anycast: url,
+				pid: `pid-${Math.random().toString(36).substring(7)}`,
+				ttl: 30 * 1000,
+				clock,
+				network,
+				handler: new Handler(network, encoder, this.encryptor),
+				registry: this.registry,
+				heartbeat: new NoopHeartbeat(),
+				dependencies: this.dependencies,
+				optsBuilder: new OptionsBuilder({
+					match: (_: string): string => url,
+				}),
 				verbose: this.verbose,
+				tracer,
 			});
 
 			const task: Task = { kind: "unclaimed", task: body.task };
 
 			const completion: Promise<Response> = new Promise((resolve) => {
-				resonateInner.process(task, (error, status) => {
-					if (error || !status) {
-						resolve(
-							new Response(
-								JSON.stringify({
-									error: "Task processing failed",
-									details: { error, status },
-								}),
-								{
-									status: 500,
-								},
-							),
-						);
-						return;
-					}
+				resonateInner.process(
+					tracer.startSpan(task.task.rootPromiseId, clock.now()),
+					task,
+					(error, status) => {
+						if (error || !status) {
+							resolve(
+								new Response(
+									JSON.stringify({
+										error: "Task processing failed",
+										details: { error, status },
+									}),
+									{
+										status: 500,
+									},
+								),
+							);
+							return;
+						}
 
-					if (status.kind === "completed") {
-						resolve(
-							new Response(
-								JSON.stringify({
-									status: "completed",
-									result: status.promise.value,
-									requestUrl: url,
-								}),
-								{
-									status: 200,
-								},
-							),
-						);
-						return;
-					} else if (status.kind === "suspended") {
-						resolve(
-							new Response(
-								JSON.stringify({
-									status: "suspended",
-									requestUrl: url,
-								}),
-								{
-									status: 200,
-								},
-							),
-						);
-						return;
-					}
-				});
+						if (status.kind === "completed") {
+							resolve(
+								new Response(
+									JSON.stringify({
+										status: "completed",
+										result: status.promise.value,
+										requestUrl: url,
+									}),
+									{
+										status: 200,
+									},
+								),
+							);
+							return;
+						} else if (status.kind === "suspended") {
+							resolve(
+								new Response(
+									JSON.stringify({
+										status: "suspended",
+										requestUrl: url,
+									}),
+									{
+										status: 200,
+									},
+								),
+							);
+							return;
+						}
+					},
+				);
 			});
 			return completion;
 		} catch (error) {
