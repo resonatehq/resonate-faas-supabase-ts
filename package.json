@@ -1,6 +1,6 @@
 {
   "name": "@resonatehq/supabase",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Resonate FaaS handler for Supabase Edge Functions (TypeScript)",
   "repository": {
     "url": "https://github.com/resonatehq/resonate-faas-supabase-ts"
@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.6",
-    "@types/bun": "latest",
     "@types/deno": "^2.5.0",
     "open": "^10.2.0"
   },
