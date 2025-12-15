@@ -21,7 +21,7 @@
     "type-check": "npx tsc --noEmit"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.6",
+    "@biomejs/biome": "2.3.9",
     "@types/deno": "^2.5.0",
     "open": "^10.2.0"
   },
