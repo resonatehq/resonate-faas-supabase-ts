@@ -15,12 +15,19 @@ import {
 } from "@resonatehq/sdk/dist/src/encryptor";
 import { OptionsBuilder } from "@resonatehq/sdk/dist/src/options";
 import { NoopTracer } from "@resonatehq/sdk/dist/src/tracer";
+import type { Value } from "@resonatehq/sdk/dist/src/types";
+import { assertDefined } from "@resonatehq/sdk/dist/src/util";
 
 export class Resonate {
 	private registry = new Registry();
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
+	private onTerminateFn?: (
+		result:
+			| { status: "completed"; result: Value<string> }
+			| { status: "suspended"; result: string[] },
+	) => void;
 
 	constructor({
 		verbose = false,
@@ -65,6 +72,15 @@ export class Resonate {
 
 	public setDependency(name: string, obj: any): void {
 		this.dependencies.set(name, obj);
+	}
+	public onTerminate(
+		fn: (
+			result:
+				| { status: "completed"; result: Value<string> }
+				| { status: "suspended"; result: string[] },
+		) => void,
+	): void {
+		this.onTerminateFn = fn;
 	}
 
 	public async handler(req: Request): Promise<Response> {
@@ -159,6 +175,14 @@ export class Resonate {
 						}
 
 						if (status.kind === "completed") {
+							if (this.onTerminateFn) {
+								assertDefined(status.promise.value);
+								this.onTerminateFn({
+									status: "completed",
+									result: status.promise.value,
+								});
+							}
+
 							resolve(
 								new Response(
 									JSON.stringify({
@@ -173,6 +197,15 @@ export class Resonate {
 							);
 							return;
 						} else if (status.kind === "suspended") {
+							if (this.onTerminateFn) {
+								this.onTerminateFn({
+									status: "suspended",
+									result: status.callbacks.map(
+										(callback) => callback.promiseId,
+									),
+								});
+							}
+
 							resolve(
 								new Response(
 									JSON.stringify({
