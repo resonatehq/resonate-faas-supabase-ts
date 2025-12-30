@@ -151,7 +151,16 @@ export class Resonate {
 
 			const task: Task = { kind: "unclaimed", task: body.task };
 
-			const completion: Promise<Response> = new Promise((resolve) => {
+			const handleCallback = (
+				data:
+					| { status: "completed"; data?: any }
+					| { status: "suspended"; result: string[] },
+			): Promise<void> => {
+				this.onTerminateFn?.(data);
+				return Promise.resolve();
+			};
+
+			return new Promise((resolve) => {
 				resonateInner.process(
 					tracer.startSpan(task.task.rootPromiseId, clock.now()),
 					task,
@@ -170,15 +179,6 @@ export class Resonate {
 							);
 							return;
 						}
-						const handleCallback = (
-							data:
-								| { status: "completed"; data?: any }
-								| { status: "suspended"; result: string[] },
-						): Promise<void> => {
-							this.onTerminateFn?.(data);
-							return Promise.resolve();
-						};
-
 						if (status.kind === "completed") {
 							handleCallback({
 								status: "completed",
@@ -222,7 +222,6 @@ export class Resonate {
 					},
 				);
 			});
-			return completion;
 		} catch (error) {
 			return new Response(
 				JSON.stringify({
