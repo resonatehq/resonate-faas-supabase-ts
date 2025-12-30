@@ -152,13 +152,14 @@ export class Resonate {
 
 			const task: Task = { kind: "unclaimed", task: body.task };
 
-			const handleCallback = (
+			const handleCallback = async (
 				data:
 					| { status: "completed"; data?: any }
 					| { status: "suspended"; result: string[] },
 			): Promise<void> => {
-				this.onTerminateFn?.(data);
-				return Promise.resolve();
+				if (this.onTerminateFn) {
+					await this.onTerminateFn(data);
+				}
 			};
 
 			return new Promise((resolve) => {
@@ -194,9 +195,7 @@ export class Resonate {
 											result: status.promise.value,
 											requestUrl: url,
 										}),
-										{
-											status: 200,
-										},
+										{ status: 200 },
 									),
 								);
 							});
