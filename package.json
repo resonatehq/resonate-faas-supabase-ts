@@ -29,6 +29,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@resonatehq/sdk": "^0.9.3"
+    "@resonatehq/sdk": "^0.9.5"
   }
 }

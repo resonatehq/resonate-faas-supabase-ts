@@ -30,14 +30,17 @@ export class Resonate {
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
+	private idPrefix: string;
 	private onTerminateFn?: OnTerminateCallback;
 
 	constructor({
 		verbose = false,
 		encryptor = undefined,
-	}: { verbose?: boolean; encryptor?: Encryptor } = {}) {
+		prefix = undefined,
+	}: { verbose?: boolean; encryptor?: Encryptor; prefix?: string } = {}) {
 		this.verbose = verbose;
 		this.encryptor = encryptor ?? new NoopEncryptor();
+		this.idPrefix = prefix ? `${prefix}:` : "";
 	}
 
 	public register<F extends Func>(
@@ -144,6 +147,7 @@ export class Resonate {
 				dependencies: this.dependencies,
 				optsBuilder: new OptionsBuilder({
 					match: (_: string): string => url,
+					idPrefix: this.idPrefix,
 				}),
 				verbose: this.verbose,
 				tracer,
