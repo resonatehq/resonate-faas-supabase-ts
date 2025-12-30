@@ -175,13 +175,11 @@ export class Resonate {
 						}
 
 						if (status.kind === "completed") {
-							if (this.onTerminateFn) {
-								assertDefined(status.promise.value);
-								this.onTerminateFn({
-									status: "completed",
-									result: status.promise.value,
-								});
-							}
+							assertDefined(status.promise.value);
+							this.onTerminateFn?.({
+								status: "completed",
+								result: status.promise.value,
+							});
 
 							resolve(
 								new Response(
@@ -197,14 +195,10 @@ export class Resonate {
 							);
 							return;
 						} else if (status.kind === "suspended") {
-							if (this.onTerminateFn) {
-								this.onTerminateFn({
-									status: "suspended",
-									result: status.callbacks.map(
-										(callback) => callback.promiseId,
-									),
-								});
-							}
+							this.onTerminateFn?.({
+								status: "suspended",
+								result: status.callbacks.map((callback) => callback.promiseId),
+							});
 
 							resolve(
 								new Response(
