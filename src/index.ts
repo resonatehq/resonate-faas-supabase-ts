@@ -20,7 +20,7 @@ type OnTerminateCallback = (
 	result:
 		| { status: "completed"; data?: any }
 		| { status: "suspended"; result: string[] },
-) => void;
+) => Promise<void>;
 
 export class Resonate {
 	private registry = new Registry();
@@ -167,44 +167,53 @@ export class Resonate {
 							);
 							return;
 						}
+						const handleCallback = (
+							data:
+								| { status: "completed"; data?: any }
+								| { status: "suspended"; result: string[] },
+						): Promise<void> => {
+							this.onTerminateFn?.(data);
+							return Promise.resolve();
+						};
+
 						if (status.kind === "completed") {
-							this.onTerminateFn?.({
+							handleCallback({
 								status: "completed",
 								data: encoder.decode(
 									this.encryptor.decrypt(status.promise.value),
 								),
+							}).finally(() => {
+								resolve(
+									new Response(
+										JSON.stringify({
+											status: "completed",
+											result: status.promise.value,
+											requestUrl: url,
+										}),
+										{
+											status: 200,
+										},
+									),
+								);
 							});
-
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "completed",
-										result: status.promise.value,
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
-								),
-							);
 							return;
 						} else if (status.kind === "suspended") {
-							this.onTerminateFn?.({
+							handleCallback({
 								status: "suspended",
 								result: status.callbacks.map((callback) => callback.promiseId),
+							}).finally(() => {
+								resolve(
+									new Response(
+										JSON.stringify({
+											status: "suspended",
+											requestUrl: url,
+										}),
+										{
+											status: 200,
+										},
+									),
+								);
 							});
-
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "suspended",
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
-								),
-							);
 							return;
 						}
 					},
