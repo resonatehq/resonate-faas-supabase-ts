@@ -1,22 +1,19 @@
 import {
 	Context,
+	type Encryptor,
 	type Func,
 	Handler,
 	HttpNetwork,
 	JsonEncoder,
+	NoopEncryptor,
 	NoopHeartbeat,
+	NoopTracer,
+	OptionsBuilder,
 	Registry,
 	ResonateInner,
 	type Task,
 	WallClock,
 } from "@resonatehq/sdk";
-
-import {
-	type Encryptor,
-	NoopEncryptor,
-} from "@resonatehq/sdk/dist/src/encryptor";
-import { OptionsBuilder } from "@resonatehq/sdk/dist/src/options";
-import { NoopTracer } from "@resonatehq/sdk/dist/src/tracer";
 
 type OnTerminateCallback = (
 	result:
