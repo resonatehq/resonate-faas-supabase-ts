@@ -1,5 +1,4 @@
 import {
-	Context,
 	type Encryptor,
 	type Func,
 	Handler,
@@ -15,29 +14,18 @@ import {
 	WallClock,
 } from "@resonatehq/sdk";
 
-type OnTerminateCallback = (
-	result:
-		| { status: "completed"; data?: any }
-		| { status: "suspended"; result: string[] },
-) => Promise<void>;
-
-export { Context };
 export class Resonate {
 	private registry = new Registry();
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
-	private idPrefix: string;
-	private onTerminateFn?: OnTerminateCallback;
 
 	constructor({
 		verbose = false,
 		encryptor = undefined,
-		prefix = undefined,
-	}: { verbose?: boolean; encryptor?: Encryptor; prefix?: string } = {}) {
+	}: { verbose?: boolean; encryptor?: Encryptor } = {}) {
 		this.verbose = verbose;
 		this.encryptor = encryptor ?? new NoopEncryptor();
-		this.idPrefix = prefix ? `${prefix}:` : "";
 	}
 
 	public register<F extends Func>(
@@ -75,9 +63,6 @@ export class Resonate {
 
 	public setDependency(name: string, obj: any): void {
 		this.dependencies.set(name, obj);
-	}
-	public onTerminate(fn: OnTerminateCallback): void {
-		this.onTerminateFn = fn;
 	}
 
 	public async handler(req: Request): Promise<Response> {
@@ -144,7 +129,7 @@ export class Resonate {
 				dependencies: this.dependencies,
 				optsBuilder: new OptionsBuilder({
 					match: (_: string): string => url,
-					idPrefix: this.idPrefix,
+					idPrefix: "",
 				}),
 				verbose: this.verbose,
 				tracer,
@@ -152,17 +137,7 @@ export class Resonate {
 
 			const task: Task = { kind: "unclaimed", task: body.task };
 
-			const handleCallback = async (
-				data:
-					| { status: "completed"; data?: any }
-					| { status: "suspended"; result: string[] },
-			): Promise<void> => {
-				if (this.onTerminateFn) {
-					await this.onTerminateFn(data);
-				}
-			};
-
-			return new Promise((resolve) => {
+			const completion: Promise<Response> = new Promise((resolve) => {
 				resonateInner.process(
 					tracer.startSpan(task.task.rootPromiseId, clock.now()),
 					task,
@@ -181,47 +156,39 @@ export class Resonate {
 							);
 							return;
 						}
+
 						if (status.kind === "completed") {
-							handleCallback({
-								status: "completed",
-								data: encoder.decode(
-									this.encryptor.decrypt(status.promise.value),
+							resolve(
+								new Response(
+									JSON.stringify({
+										status: "completed",
+										result: status.promise.value,
+										requestUrl: url,
+									}),
+									{
+										status: 200,
+									},
 								),
-							}).finally(() => {
-								resolve(
-									new Response(
-										JSON.stringify({
-											status: "completed",
-											result: status.promise.value,
-											requestUrl: url,
-										}),
-										{ status: 200 },
-									),
-								);
-							});
+							);
 							return;
 						} else if (status.kind === "suspended") {
-							handleCallback({
-								status: "suspended",
-								result: status.callbacks.map((callback) => callback.promiseId),
-							}).finally(() => {
-								resolve(
-									new Response(
-										JSON.stringify({
-											status: "suspended",
-											requestUrl: url,
-										}),
-										{
-											status: 200,
-										},
-									),
-								);
-							});
+							resolve(
+								new Response(
+									JSON.stringify({
+										status: "suspended",
+										requestUrl: url,
+									}),
+									{
+										status: 200,
+									},
+								),
+							);
 							return;
 						}
 					},
 				);
 			});
+			return completion;
 		} catch (error) {
 			return new Response(
 				JSON.stringify({
