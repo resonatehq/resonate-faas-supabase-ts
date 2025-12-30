@@ -1,4 +1,5 @@
 import {
+	Context,
 	type Encryptor,
 	type Func,
 	Handler,
@@ -13,6 +14,8 @@ import {
 	type Task,
 	WallClock,
 } from "@resonatehq/sdk";
+
+export { Context };
 
 export class Resonate {
 	private registry = new Registry();
