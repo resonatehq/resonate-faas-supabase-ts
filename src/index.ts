@@ -1,4 +1,5 @@
 import {
+	Context,
 	type Func,
 	Handler,
 	HttpNetwork,
@@ -9,6 +10,7 @@ import {
 	type Task,
 	WallClock,
 } from "@resonatehq/sdk";
+
 import {
 	type Encryptor,
 	NoopEncryptor,
@@ -16,11 +18,19 @@ import {
 import { OptionsBuilder } from "@resonatehq/sdk/dist/src/options";
 import { NoopTracer } from "@resonatehq/sdk/dist/src/tracer";
 
+type OnTerminateCallback = (
+	result:
+		| { status: "completed"; data?: any }
+		| { status: "suspended"; result: string[] },
+) => Promise<void>;
+
+export { Context };
 export class Resonate {
 	private registry = new Registry();
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
+	private onTerminateFn?: OnTerminateCallback;
 
 	constructor({
 		verbose = false,
@@ -65,6 +75,9 @@ export class Resonate {
 
 	public setDependency(name: string, obj: any): void {
 		this.dependencies.set(name, obj);
+	}
+	public onTerminate(fn: OnTerminateCallback): void {
+		this.onTerminateFn = fn;
 	}
 
 	public async handler(req: Request): Promise<Response> {
@@ -157,33 +170,53 @@ export class Resonate {
 							);
 							return;
 						}
+						const handleCallback = (
+							data:
+								| { status: "completed"; data?: any }
+								| { status: "suspended"; result: string[] },
+						): Promise<void> => {
+							this.onTerminateFn?.(data);
+							return Promise.resolve();
+						};
 
 						if (status.kind === "completed") {
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "completed",
-										result: status.promise.value,
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
+							handleCallback({
+								status: "completed",
+								data: encoder.decode(
+									this.encryptor.decrypt(status.promise.value),
 								),
-							);
+							}).finally(() => {
+								resolve(
+									new Response(
+										JSON.stringify({
+											status: "completed",
+											result: status.promise.value,
+											requestUrl: url,
+										}),
+										{
+											status: 200,
+										},
+									),
+								);
+							});
 							return;
 						} else if (status.kind === "suspended") {
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "suspended",
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
-								),
-							);
+							handleCallback({
+								status: "suspended",
+								result: status.callbacks.map((callback) => callback.promiseId),
+							}).finally(() => {
+								resolve(
+									new Response(
+										JSON.stringify({
+											status: "suspended",
+											requestUrl: url,
+										}),
+										{
+											status: 200,
+										},
+									),
+								);
+							});
 							return;
 						}
 					},
