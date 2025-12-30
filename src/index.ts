@@ -15,8 +15,6 @@ import {
 } from "@resonatehq/sdk/dist/src/encryptor";
 import { OptionsBuilder } from "@resonatehq/sdk/dist/src/options";
 import { NoopTracer } from "@resonatehq/sdk/dist/src/tracer";
-import type { Value } from "@resonatehq/sdk/dist/src/types";
-import { assertDefined } from "@resonatehq/sdk/dist/src/util";
 
 export class Resonate {
 	private registry = new Registry();
@@ -25,7 +23,7 @@ export class Resonate {
 	private encryptor: Encryptor;
 	private onTerminateFn?: (
 		result:
-			| { status: "completed"; result: Value<string> }
+			| { status: "completed"; data?: any }
 			| { status: "suspended"; result: string[] },
 	) => void;
 
@@ -76,7 +74,7 @@ export class Resonate {
 	public onTerminate(
 		fn: (
 			result:
-				| { status: "completed"; result: Value<string> }
+				| { status: "completed"; data?: any }
 				| { status: "suspended"; result: string[] },
 		) => void,
 	): void {
@@ -173,12 +171,12 @@ export class Resonate {
 							);
 							return;
 						}
-
 						if (status.kind === "completed") {
-							assertDefined(status.promise.value);
 							this.onTerminateFn?.({
 								status: "completed",
-								result: status.promise.value,
+								data: encoder.decode(
+									this.encryptor.decrypt(status.promise.value),
+								),
 							});
 
 							resolve(
