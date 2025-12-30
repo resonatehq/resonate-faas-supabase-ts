@@ -16,16 +16,18 @@ import {
 import { OptionsBuilder } from "@resonatehq/sdk/dist/src/options";
 import { NoopTracer } from "@resonatehq/sdk/dist/src/tracer";
 
+type OnTerminateCallback = (
+	result:
+		| { status: "completed"; data?: any }
+		| { status: "suspended"; result: string[] },
+) => void;
+
 export class Resonate {
 	private registry = new Registry();
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
-	private onTerminateFn?: (
-		result:
-			| { status: "completed"; data?: any }
-			| { status: "suspended"; result: string[] },
-	) => void;
+	private onTerminateFn?: OnTerminateCallback;
 
 	constructor({
 		verbose = false,
@@ -71,13 +73,7 @@ export class Resonate {
 	public setDependency(name: string, obj: any): void {
 		this.dependencies.set(name, obj);
 	}
-	public onTerminate(
-		fn: (
-			result:
-				| { status: "completed"; data?: any }
-				| { status: "suspended"; result: string[] },
-		) => void,
-	): void {
+	public onTerminate(fn: OnTerminateCallback): void {
 		this.onTerminateFn = fn;
 	}
 
