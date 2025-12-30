@@ -15,6 +15,12 @@ import {
 	WallClock,
 } from "@resonatehq/sdk";
 
+type OnTerminateCallback = (
+	result:
+		| { status: "completed"; data?: any }
+		| { status: "suspended"; waitingOn: string[] },
+) => Promise<void>;
+
 export { Context };
 
 export class Resonate {
@@ -68,7 +74,10 @@ export class Resonate {
 		this.dependencies.set(name, obj);
 	}
 
-	public async handler(req: Request): Promise<Response> {
+	public async handler(
+		req: Request,
+		onTerminate?: OnTerminateCallback,
+	): Promise<Response> {
 		try {
 			if (req.method !== "POST") {
 				return new Response(
@@ -161,31 +170,42 @@ export class Resonate {
 						}
 
 						if (status.kind === "completed") {
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "completed",
-										result: status.promise.value,
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
-								),
-							);
-							return;
+							Promise.resolve(
+								onTerminate?.({
+									status: status.kind,
+									data: encoder.decode(
+										this.encryptor.decrypt(status.promise.value),
+									),
+								}),
+							).finally(() => {
+								resolve(
+									new Response(
+										JSON.stringify({
+											status: "completed",
+											result: status.promise.value,
+											requestUrl: url,
+										}),
+										{ status: 200 },
+									),
+								);
+							});
 						} else if (status.kind === "suspended") {
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "suspended",
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
-								),
-							);
+							Promise.resolve(
+								onTerminate?.({
+									status: status.kind,
+									waitingOn: status.callbacks.map((cb) => cb.promiseId),
+								}),
+							).finally(() => {
+								resolve(
+									new Response(
+										JSON.stringify({
+											status: "suspended",
+											requestUrl: url,
+										}),
+										{ status: 200 },
+									),
+								);
+							});
 							return;
 						}
 					},
@@ -202,9 +222,9 @@ export class Resonate {
 		}
 	}
 
-	public httpHandler(): Deno.HttpServer {
+	public httpHandler(onTerminate?: OnTerminateCallback): Deno.HttpServer {
 		return Deno.serve(async (req: Request) => {
-			return await this.handler(req);
+			return await this.handler(req, onTerminate);
 		});
 	}
 }
