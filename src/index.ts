@@ -1,4 +1,5 @@
 import {
+	Context,
 	type Func,
 	Handler,
 	HttpNetwork,
@@ -9,6 +10,7 @@ import {
 	type Task,
 	WallClock,
 } from "@resonatehq/sdk";
+
 import {
 	type Encryptor,
 	NoopEncryptor,
@@ -22,6 +24,7 @@ type OnTerminateCallback = (
 		| { status: "suspended"; result: string[] },
 ) => Promise<void>;
 
+export { Context };
 export class Resonate {
 	private registry = new Registry();
 	private dependencies = new Map<string, any>();
