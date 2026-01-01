@@ -170,42 +170,53 @@ export class Resonate {
 						}
 
 						if (status.kind === "completed") {
-							Promise.resolve(
-								onTerminate?.({
-									status: status.kind,
-									data: encoder.decode(
-										this.encryptor.decrypt(status.promise.value),
-									),
-								}),
-							).finally(() => {
-								resolve(
-									new Response(
-										JSON.stringify({
-											status: "completed",
-											result: status.promise.value,
-											requestUrl: url,
-										}),
-										{ status: 200 },
-									),
-								);
-							});
+							Promise.resolve()
+								.then(() =>
+									onTerminate?.({
+										status: status.kind,
+										data: encoder.decode(
+											this.encryptor.decrypt(status.promise.value),
+										),
+									}),
+								)
+								.catch((err) => {
+									console.error("onTerminate failed", err);
+								})
+								.finally(() => {
+									resolve(
+										new Response(
+											JSON.stringify({
+												status: "completed",
+												result: status.promise.value,
+												requestUrl: url,
+											}),
+											{ status: 200 },
+										),
+									);
+								});
+							return;
 						} else if (status.kind === "suspended") {
-							Promise.resolve(
-								onTerminate?.({
-									status: status.kind,
-									waitingOn: status.callbacks.map((cb) => cb.promiseId),
-								}),
-							).finally(() => {
-								resolve(
-									new Response(
-										JSON.stringify({
-											status: "suspended",
-											requestUrl: url,
-										}),
-										{ status: 200 },
-									),
-								);
-							});
+							Promise.resolve()
+								.then(() =>
+									onTerminate?.({
+										status: status.kind,
+										waitingOn: status.callbacks.map((cb) => cb.promiseId),
+									}),
+								)
+								.catch((err) => {
+									console.error("onTerminate failed", err);
+								})
+								.finally(() => {
+									resolve(
+										new Response(
+											JSON.stringify({
+												status: "suspended",
+												requestUrl: url,
+											}),
+											{ status: 200 },
+										),
+									);
+								});
 							return;
 						}
 					},
