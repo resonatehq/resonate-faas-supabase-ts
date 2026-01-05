@@ -15,6 +15,12 @@ import {
 	WallClock,
 } from "@resonatehq/sdk";
 
+type OnTerminateCallback = (
+	result:
+		| { status: "completed"; result?: any }
+		| { status: "suspended"; waitingOn: string[] },
+) => Promise<void>;
+
 export { Context };
 
 export class Resonate {
@@ -22,6 +28,7 @@ export class Resonate {
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
+	private encoder: JsonEncoder;
 
 	constructor({
 		verbose = false,
@@ -29,6 +36,7 @@ export class Resonate {
 	}: { verbose?: boolean; encryptor?: Encryptor } = {}) {
 		this.verbose = verbose;
 		this.encryptor = encryptor ?? new NoopEncryptor();
+		this.encoder = new JsonEncoder();
 	}
 
 	public register<F extends Func>(
@@ -68,7 +76,10 @@ export class Resonate {
 		this.dependencies.set(name, obj);
 	}
 
-	public async handler(req: Request): Promise<Response> {
+	public async handler(
+		req: Request,
+		onTerminate?: OnTerminateCallback,
+	): Promise<Response> {
 		try {
 			if (req.method !== "POST") {
 				return new Response(
@@ -109,7 +120,6 @@ export class Resonate {
 				);
 			}
 
-			const encoder = new JsonEncoder();
 			const clock = new WallClock();
 			const tracer = new NoopTracer();
 			const network = new HttpNetwork({
@@ -126,7 +136,7 @@ export class Resonate {
 				ttl: 30 * 1000,
 				clock,
 				network,
-				handler: new Handler(network, encoder, this.encryptor),
+				handler: new Handler(network, this.encoder, this.encryptor),
 				registry: this.registry,
 				heartbeat: new NoopHeartbeat(),
 				dependencies: this.dependencies,
@@ -140,58 +150,49 @@ export class Resonate {
 
 			const task: Task = { kind: "unclaimed", task: body.task };
 
-			const completion: Promise<Response> = new Promise((resolve) => {
+			return new Promise<
+				| { status: "completed"; result?: any }
+				| { status: "suspended"; waitingOn: string[] }
+			>((resolve, reject) => {
 				resonateInner.process(
 					tracer.startSpan(task.task.rootPromiseId, clock.now()),
 					task,
 					(error, status) => {
 						if (error || !status) {
-							resolve(
-								new Response(
-									JSON.stringify({
-										error: "Task processing failed",
-										details: { error, status },
-									}),
-									{
-										status: 500,
-									},
-								),
-							);
-							return;
+							return reject({
+								error: "Task processing failed",
+								details: { error, status },
+							});
 						}
 
-						if (status.kind === "completed") {
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "completed",
-										result: status.promise.value,
-										requestUrl: url,
+						return resolve({
+							...(status.kind === "completed"
+								? { status: status.kind, result: status.promise.value }
+								: {
+										status: status.kind,
+										waitingOn: status.callbacks.map((cb) => cb.promiseId),
 									}),
-									{
-										status: 200,
-									},
-								),
-							);
-							return;
-						} else if (status.kind === "suspended") {
-							resolve(
-								new Response(
-									JSON.stringify({
-										status: "suspended",
-										requestUrl: url,
-									}),
-									{
-										status: 200,
-									},
-								),
-							);
-							return;
-						}
+						});
 					},
 				);
-			});
-			return completion;
+			})
+				.then(async (res) => {
+					try {
+						await onTerminate?.(this.decrypt(res));
+					} catch (e) {
+						console.error("onTerminate failed", e);
+					}
+					return new Response(
+						JSON.stringify({
+							...res,
+							requestUrl: url,
+						}),
+						{ status: 200 },
+					);
+				})
+				.catch((err) => {
+					return new Response(JSON.stringify(err), { status: 500 });
+				});
 		} catch (error) {
 			return new Response(
 				JSON.stringify({
@@ -202,9 +203,24 @@ export class Resonate {
 		}
 	}
 
-	public httpHandler(): Deno.HttpServer {
+	private decrypt(
+		res:
+			| { status: "completed"; result?: any }
+			| { status: "suspended"; waitingOn: string[] },
+	):
+		| { status: "completed"; result?: any }
+		| { status: "suspended"; waitingOn: string[] } {
+		if (res.status !== "completed") return res;
+
+		return {
+			...res,
+			result: this.encoder.decode(this.encryptor.decrypt(res.result)),
+		};
+	}
+
+	public httpHandler(onTerminate?: OnTerminateCallback): Deno.HttpServer {
 		return Deno.serve(async (req: Request) => {
-			return await this.handler(req);
+			return await this.handler(req, onTerminate);
 		});
 	}
 }
