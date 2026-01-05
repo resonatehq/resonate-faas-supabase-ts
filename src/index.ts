@@ -149,13 +149,17 @@ export class Resonate {
 
 			const task: Task = { kind: "unclaimed", task: body.task };
 
-			const completion: Promise<Response> = new Promise((resolve) => {
+			return new Promise<
+				| Response
+				| { status: "completed"; result: any; requestUrl: string }
+				| { status: "suspended"; waitingOn: string[]; requestUrl: string }
+			>((resolve) => {
 				resonateInner.process(
 					tracer.startSpan(task.task.rootPromiseId, clock.now()),
 					task,
 					(error, status) => {
 						if (error || !status) {
-							resolve(
+							return resolve(
 								new Response(
 									JSON.stringify({
 										error: "Task processing failed",
@@ -166,63 +170,46 @@ export class Resonate {
 									},
 								),
 							);
-							return;
 						}
 
-						if (status.kind === "completed") {
-							Promise.resolve()
-								.then(() =>
-									onTerminate?.({
-										status: status.kind,
-										data: encoder.decode(
-											this.encryptor.decrypt(status.promise.value),
-										),
-									}),
-								)
-								.catch((err) => {
-									console.error("onTerminate failed", err);
-								})
-								.finally(() => {
-									resolve(
-										new Response(
-											JSON.stringify({
-												status: "completed",
-												result: status.promise.value,
-												requestUrl: url,
-											}),
-											{ status: 200 },
-										),
-									);
-								});
-							return;
-						} else if (status.kind === "suspended") {
-							Promise.resolve()
-								.then(() =>
-									onTerminate?.({
+						return resolve({
+							requestUrl: url,
+							...(status.kind === "completed"
+								? { status: status.kind, result: status.promise.value }
+								: {
 										status: status.kind,
 										waitingOn: status.callbacks.map((cb) => cb.promiseId),
 									}),
-								)
-								.catch((err) => {
-									console.error("onTerminate failed", err);
-								})
-								.finally(() => {
-									resolve(
-										new Response(
-											JSON.stringify({
-												status: "suspended",
-												requestUrl: url,
-											}),
-											{ status: 200 },
-										),
-									);
-								});
-							return;
-						}
+						});
 					},
 				);
+			}).then(async (res) => {
+				if (res instanceof Response) return res;
+				try {
+					await onTerminate?.(
+						res.status === "completed"
+							? {
+									status: res.status,
+									data: encoder.decode(this.encryptor.decrypt(res.result)),
+								}
+							: {
+									status: res.status,
+									waitingOn: res.waitingOn,
+								},
+					);
+				} catch (err) {
+					console.error("onTerminate failed", err);
+				}
+
+				return new Response(
+					JSON.stringify({
+						status: res.status,
+						requestUrl: url,
+						...(res.status === "completed" && { result: res.result }),
+					}),
+					{ status: 200 },
+				);
 			});
-			return completion;
 		} catch (error) {
 			return new Response(
 				JSON.stringify({
