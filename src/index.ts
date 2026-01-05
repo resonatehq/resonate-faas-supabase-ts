@@ -184,9 +184,8 @@ export class Resonate {
 					}
 					return new Response(
 						JSON.stringify({
-							status: res.status,
+							...res,
 							requestUrl: url,
-							...(res.status === "completed" && { result: res.result }),
 						}),
 						{ status: 200 },
 					);
