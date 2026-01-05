@@ -17,7 +17,7 @@ import {
 
 type OnTerminateCallback = (
 	result:
-		| { status: "completed"; data?: any }
+		| { status: "completed"; result?: any }
 		| { status: "suspended"; waitingOn: string[] },
 ) => Promise<void>;
 
@@ -28,6 +28,7 @@ export class Resonate {
 	private dependencies = new Map<string, any>();
 	private verbose: boolean;
 	private encryptor: Encryptor;
+	private encoder: JsonEncoder;
 
 	constructor({
 		verbose = false,
@@ -35,6 +36,7 @@ export class Resonate {
 	}: { verbose?: boolean; encryptor?: Encryptor } = {}) {
 		this.verbose = verbose;
 		this.encryptor = encryptor ?? new NoopEncryptor();
+		this.encoder = new JsonEncoder();
 	}
 
 	public register<F extends Func>(
@@ -118,7 +120,6 @@ export class Resonate {
 				);
 			}
 
-			const encoder = new JsonEncoder();
 			const clock = new WallClock();
 			const tracer = new NoopTracer();
 			const network = new HttpNetwork({
@@ -135,7 +136,7 @@ export class Resonate {
 				ttl: 30 * 1000,
 				clock,
 				network,
-				handler: new Handler(network, encoder, this.encryptor),
+				handler: new Handler(network, this.encoder, this.encryptor),
 				registry: this.registry,
 				heartbeat: new NoopHeartbeat(),
 				dependencies: this.dependencies,
@@ -150,30 +151,21 @@ export class Resonate {
 			const task: Task = { kind: "unclaimed", task: body.task };
 
 			return new Promise<
-				| Response
-				| { status: "completed"; result: any; requestUrl: string }
-				| { status: "suspended"; waitingOn: string[]; requestUrl: string }
-			>((resolve) => {
+				| { status: "completed"; result?: any }
+				| { status: "suspended"; waitingOn: string[] }
+			>((resolve, reject) => {
 				resonateInner.process(
 					tracer.startSpan(task.task.rootPromiseId, clock.now()),
 					task,
 					(error, status) => {
 						if (error || !status) {
-							return resolve(
-								new Response(
-									JSON.stringify({
-										error: "Task processing failed",
-										details: { error, status },
-									}),
-									{
-										status: 500,
-									},
-								),
-							);
+							return reject({
+								error: "Task processing failed",
+								details: { error, status },
+							});
 						}
 
 						return resolve({
-							requestUrl: url,
 							...(status.kind === "completed"
 								? { status: status.kind, result: status.promise.value }
 								: {
@@ -183,33 +175,25 @@ export class Resonate {
 						});
 					},
 				);
-			}).then(async (res) => {
-				if (res instanceof Response) return res;
-				try {
-					await onTerminate?.(
-						res.status === "completed"
-							? {
-									status: res.status,
-									data: encoder.decode(this.encryptor.decrypt(res.result)),
-								}
-							: {
-									status: res.status,
-									waitingOn: res.waitingOn,
-								},
+			})
+				.then(async (res) => {
+					try {
+						await onTerminate?.(this.decrypt(res));
+					} catch (e) {
+						console.error("onTerminate failed", e);
+					}
+					return new Response(
+						JSON.stringify({
+							status: res.status,
+							requestUrl: url,
+							...(res.status === "completed" && { result: res.result }),
+						}),
+						{ status: 200 },
 					);
-				} catch (err) {
-					console.error("onTerminate failed", err);
-				}
-
-				return new Response(
-					JSON.stringify({
-						status: res.status,
-						requestUrl: url,
-						...(res.status === "completed" && { result: res.result }),
-					}),
-					{ status: 200 },
-				);
-			});
+				})
+				.catch((err) => {
+					return new Response(JSON.stringify(err), { status: 500 });
+				});
 		} catch (error) {
 			return new Response(
 				JSON.stringify({
@@ -218,6 +202,21 @@ export class Resonate {
 				{ status: 500 },
 			);
 		}
+	}
+
+	private decrypt(
+		res:
+			| { status: "completed"; result?: any }
+			| { status: "suspended"; waitingOn: string[] },
+	):
+		| { status: "completed"; result?: any }
+		| { status: "suspended"; waitingOn: string[] } {
+		if (res.status !== "completed") return res;
+
+		return {
+			...res,
+			result: this.encoder.decode(this.encryptor.decrypt(res.result)),
+		};
 	}
 
 	public httpHandler(onTerminate?: OnTerminateCallback): Deno.HttpServer {
