@@ -21,4 +21,5 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Publish Package
       - run: deno publish
