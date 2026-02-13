@@ -1,0 +1,24 @@
+{
+  "name": "@resonatehq/supabase",
+  "version": "0.1.11",
+  "exports": "./mod.ts",
+  "imports": {
+    "@resonatehq/sdk": "npm:@resonatehq/sdk@supabase"
+  },
+  "publish": {
+    "include": ["mod.ts", "src/", "deno.json", "LICENSE", "README.md"]
+  },
+  "tasks": {
+    "check": "deno lint && deno fmt --check",
+    "fmt": "deno fmt",
+    "lint": "deno lint"
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "compilerOptions": {
+    "strict": true
+  }
+}

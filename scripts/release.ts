@@ -1,38 +1,31 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { URLSearchParams } from "node:url";
-import open from "open";
-
-function getPackageInfo(cwd: string) {
-	const pkgPath = resolve(cwd, "package.json");
-	const pkgRaw = readFileSync(pkgPath, "utf-8");
-	return JSON.parse(pkgRaw);
+async function getPackageInfo(cwd: string) {
+  const pkgPath = `${cwd}/deno.json`;
+  const pkgRaw = await Deno.readTextFile(pkgPath);
+  return JSON.parse(pkgRaw);
 }
 
 async function main() {
-	const cwd = process.cwd();
-	const pkg = getPackageInfo(cwd);
+  const cwd = Deno.cwd();
+  const pkg = await getPackageInfo(cwd);
 
-	const version = pkg.version;
-	const repoUrl = pkg.repository?.url;
+  const version = pkg.version;
 
-	if (!repoUrl || !repoUrl.startsWith("https://github.com/")) {
-		console.error("❌ Missing or invalid repository.url in package.json");
-		process.exit(1);
-	}
+  const repoUrl = "https://github.com/resonatehq/resonate-faas-supabase-ts";
 
-	const params = new URLSearchParams({
-		tag: `v${version}`,
-		title: `v${version}`,
-	});
+  const params = new URLSearchParams({
+    tag: `v${version}`,
+    title: `v${version}`,
+  });
 
-	const newReleaseUrl = `${repoUrl.replace(/\.git$/, "")}/releases/new?${params.toString()}`;
+  const newReleaseUrl = `${repoUrl}/releases/new?${params.toString()}`;
 
-	console.log(`🔗 Opening: ${newReleaseUrl}`);
-	await open(newReleaseUrl);
+  console.log(`🔗 Opening: ${newReleaseUrl}`);
+
+  const cmd = new Deno.Command("open", { args: [newReleaseUrl] });
+  await cmd.output();
 }
 
 main().catch((err) => {
-	console.error(err);
-	process.exit(1);
+  console.error(err);
+  Deno.exit(1);
 });

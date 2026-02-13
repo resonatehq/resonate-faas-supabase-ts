@@ -6,9 +6,10 @@ on:
 
 jobs:
   run:
-    name: release
+    name: publish
 
     permissions:
+      contents: read
       id-token: write
 
     runs-on: ubuntu-latest
@@ -16,14 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: denoland/setup-deno@v2
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          deno-version: v2.x
 
-      # Ensure npm 11.5.1 or later is installed
-      - name: Update npm
-        run: npm install -g npm@latest
-      - run: npm install
-      - run: npm run build
-      - run: npm publish
+      - run: deno publish
