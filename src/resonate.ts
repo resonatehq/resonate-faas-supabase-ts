@@ -140,8 +140,7 @@ export class Resonate {
       });
 
       const functionUrl = Deno.env.get("FUNCTION_URL") ?? buildForwardedURL(req);
-
-      console.log({ functionUrl });
+      this.verbose && console.log({ functionUrl });
 
       const core = new Core({
         pid: `pid-${Math.random().toString(36).substring(7)}`,
@@ -207,11 +206,6 @@ export class Resonate {
   }
 
   public httpHandler(): unknown {
-    if (typeof Deno === "undefined") {
-      throw new Error(
-        "httpHandler requires a Deno runtime (e.g. Supabase Edge Functions)",
-      );
-    }
     return Deno.serve(async (req: Request) => {
       return await this.handler(req);
     });
