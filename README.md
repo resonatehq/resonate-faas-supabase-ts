@@ -1,31 +1,49 @@
 # @resonatehq/supabase
 
-# Example
-Setup your Supabse Edge Functions: [docs](https://supabase.com/docs/guides/functions)
+`@resonatehq/supabase` is the official binding to run [Resonate](https://github.com/resonatehq/resonate) durable execution workers on [Supabase Edge Functions](https://supabase.com/docs/guides/functions). Write long-running, stateful applications on short-lived, stateless serverless infrastructure.
 
+## Installation
+
+This package is published to JSR. Import it in your Supabase Edge Function:
+
+```ts
+import { type Context, Resonate } from "jsr:@resonatehq/supabase@0.2.2";
+```
+
+No `npm install` needed — Supabase Edge Functions use Deno and resolve JSR imports automatically.
+
+## Usage
+
+Register your functions and call `resonate.httpHandler()` to wire up the Supabase Edge Function request handler:
 
 ```ts
 import { type Context, Resonate } from "jsr:@resonatehq/supabase@0.2.2";
 
 const resonate = new Resonate();
 
-resonate.register("foo", function* (ctx, count: number, delay: number) {
-  yield* ctx.run(() => console.log("hello world", count, delay));
-  let i = 0;
-  while (i < count) {
-    i = yield* ctx.rpc(bar, "say hi", i, delay);
-    yield* ctx.sleep(delay * 60 * 1000);
+resonate.register("countdown", function* countdown(ctx: Context, n: number): Generator {
+  if (n <= 0) {
+    console.log("done");
+    return;
   }
-  return "done";
+  console.log(n);
+  yield* ctx.sleep(1000);
+  yield* ctx.rpc(countdown, n - 1);
 });
 
-function bar(_ctx: Context, msg: string, count: number, delay: number) {
-  console.log("running bar");
-  console.log({ msg, count, delay });
-  return count + 1;
-}
-
-resonate.register("bar", bar);
-
+// Wire up the Supabase Edge Function handler
 resonate.httpHandler();
 ```
+
+Deploy this as a Supabase Edge Function. The Resonate Server will invoke your function to run and resume durable workflows.
+
+See the [Supabase Edge Functions documentation](https://supabase.com/docs/guides/functions) to learn how to develop and deploy Edge Functions.
+
+## Examples
+
+- [Durable Countdown on Supabase Edge Functions](https://github.com/resonatehq-examples/example-countdown-supabase-ts)
+- [Durable Research Agent on Supabase Edge Functions](https://github.com/resonatehq-examples/example-openai-deep-research-agent-supabase-ts)
+
+## Documentation
+
+Full documentation: [docs.resonatehq.io](https://docs.resonatehq.io)
