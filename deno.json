@@ -3,7 +3,7 @@
   "version": "0.2.2",
   "exports": "./mod.ts",
   "imports": {
-    "@resonatehq/sdk": "npm:@resonatehq/sdk@supabase"
+    "@resonatehq/sdk": "npm:@resonatehq/sdk@^0.10.0"
   },
   "publish": {
     "include": ["mod.ts", "src/", "deno.json", "LICENSE", "README.md"]

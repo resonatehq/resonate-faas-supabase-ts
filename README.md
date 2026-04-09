@@ -1,6 +1,9 @@
 # @resonatehq/supabase
 
-`@resonatehq/supabase` is the official binding to run [Resonate](https://github.com/resonatehq/resonate) durable execution workers on [Supabase Edge Functions](https://supabase.com/docs/guides/functions). Write long-running, stateful applications on short-lived, stateless serverless infrastructure.
+`@resonatehq/supabase` is the official binding to run
+[Resonate](https://github.com/resonatehq/resonate) durable execution workers on
+[Supabase Edge Functions](https://supabase.com/docs/guides/functions). Write long-running, stateful
+applications on short-lived, stateless serverless infrastructure.
 
 ## Installation
 
@@ -14,7 +17,8 @@ No `npm install` needed — Supabase Edge Functions use Deno and resolve JSR imp
 
 ## Usage
 
-Register your functions and call `resonate.httpHandler()` to wire up the Supabase Edge Function request handler:
+Register your functions and call `resonate.httpHandler()` to wire up the Supabase Edge Function
+request handler:
 
 ```ts
 import { type Context, Resonate } from "jsr:@resonatehq/supabase@0.2.2";
@@ -35,9 +39,11 @@ resonate.register("countdown", function* countdown(ctx: Context, n: number): Gen
 resonate.httpHandler();
 ```
 
-Deploy this as a Supabase Edge Function. The Resonate Server will invoke your function to run and resume durable workflows.
+Deploy this as a Supabase Edge Function. The Resonate Server will invoke your function to run and
+resume durable workflows.
 
-See the [Supabase Edge Functions documentation](https://supabase.com/docs/guides/functions) to learn how to develop and deploy Edge Functions.
+See the [Supabase Edge Functions documentation](https://supabase.com/docs/guides/functions) to learn
+how to develop and deploy Edge Functions.
 
 ## Examples
 
