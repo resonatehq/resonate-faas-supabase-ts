@@ -1,6 +1,6 @@
 {
   "name": "@resonatehq/supabase",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "exports": "./mod.ts",
   "imports": {
     "@resonatehq/sdk": "npm:@resonatehq/sdk@^0.10.0"
