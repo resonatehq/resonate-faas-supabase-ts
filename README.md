@@ -10,7 +10,7 @@ applications on short-lived, stateless serverless infrastructure.
 This package is published to JSR. Import it in your Supabase Edge Function:
 
 ```ts
-import { type Context, Resonate } from "jsr:@resonatehq/supabase@0.2.2";
+import { type Context, Resonate } from "jsr:@resonatehq/supabase";
 ```
 
 No `npm install` needed — Supabase Edge Functions use Deno and resolve JSR imports automatically.
@@ -21,7 +21,7 @@ Register your functions and call `resonate.httpHandler()` to wire up the Supabas
 request handler:
 
 ```ts
-import { type Context, Resonate } from "jsr:@resonatehq/supabase@0.2.2";
+import { type Context, Resonate } from "jsr:@resonatehq/supabase";
 
 const resonate = new Resonate();
 
