@@ -1,9 +1,10 @@
 {
   "name": "@resonatehq/supabase",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "exports": "./mod.ts",
   "imports": {
-    "@resonatehq/sdk": "npm:@resonatehq/sdk@^0.10.0"
+    "@resonatehq/sdk": "npm:@resonatehq/sdk@^0.10.0",
+    "postgres": "npm:postgres@^3.4.5"
   },
   "publish": {
     "include": ["mod.ts", "src/", "deno.json", "LICENSE", "README.md"]
