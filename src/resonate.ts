@@ -4,7 +4,6 @@ import {
   Core,
   type Encryptor,
   type Func,
-  HttpNetwork,
   isExecuteMsg,
   type Logger,
   type LogLevel,
@@ -14,6 +13,7 @@ import {
   Registry,
   WallClock,
 } from "@resonatehq/sdk";
+import { SupabaseNetwork } from "./network.ts";
 
 function isUrl(str: string): boolean {
   try {
@@ -31,8 +31,7 @@ export class Resonate {
   private logger: Logger;
   private pid: string;
   private dependencies: Map<string, any>;
-  private token?: string;
-  private timeout?: number;
+  private connectionString?: string;
   private ttl: number;
 
   /**
@@ -45,10 +44,9 @@ export class Resonate {
    *   (5 minutes). Set this to at least the maximum expected function execution time.
    *   Because serverless functions cannot send async heartbeats, choose a value safely
    *   above your function's configured timeout.
-   * @param options.token - Bearer token for authentication. Passed through to HttpNetwork
-   *   which falls back to `RESONATE_TOKEN` env var.
-   * @param options.timeout - Network request timeout. Passed through to HttpNetwork
-   *   which falls back to `RESONATE_TIMEOUT` env var (default: 10s).
+   * @param options.connectionString - Postgres connection string for the resonate-pg
+   *   server (the Resonate server running inside your Supabase database). Defaults to
+   *   the `SUPABASE_DB_URL` env var, which Supabase Edge Functions provide automatically.
    * @param options.verbose - Enables verbose logging (shorthand for `logLevel: "debug"`). Defaults to `false`.
    * @param options.logLevel - Log level for the default ConsoleLogger. Defaults to `"warn"`. Takes precedence over `verbose`.
    * @param options.logger - Custom logger implementation. Defaults to {@link ConsoleLogger}.
@@ -59,8 +57,7 @@ export class Resonate {
   constructor({
     pid = undefined,
     ttl = 5 * 60 * 1000,
-    token = undefined,
-    timeout = undefined,
+    connectionString = undefined,
     verbose = false,
     logLevel = undefined,
     logger = undefined,
@@ -69,8 +66,7 @@ export class Resonate {
   }: {
     pid?: string;
     ttl?: number;
-    token?: string;
-    timeout?: number;
+    connectionString?: string;
     verbose?: boolean;
     logLevel?: LogLevel;
     logger?: Logger;
@@ -85,8 +81,7 @@ export class Resonate {
     this.pid = pid ?? crypto.randomUUID().replace(/-/g, "");
     this.registry = new Registry();
     this.dependencies = new Map();
-    this.token = token;
-    this.timeout = timeout;
+    this.connectionString = connectionString;
     this.ttl = ttl;
   }
 
@@ -162,15 +157,12 @@ export class Resonate {
         );
       }
 
-      // The Resonate server URL: prefer the message head, fall back to
-      // RESONATE_URL env var (HttpNetwork handles that fallback internally).
-      const resonateServerUrl = body.head.serverUrl;
-
-      const network = new HttpNetwork({
-        url: resonateServerUrl,
-        timeout: this.timeout,
-        headers: {},
-        token: this.token,
+      // Talk to the resonate-pg server (a Resonate server that lives entirely in
+      // the Postgres database) directly over the connection this function already
+      // has -- each request is a `SELECT resonate.resonate_rpc(...)`. No separate
+      // Resonate HTTP server; delivery still arrives by pg_net HTTP push.
+      const network = new SupabaseNetwork({
+        connectionString: this.connectionString,
         logger: this.logger,
       });
 
