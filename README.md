@@ -25,14 +25,14 @@ import { type Context, Resonate } from "jsr:@resonatehq/supabase";
 
 const resonate = new Resonate();
 
-resonate.register("countdown", function* countdown(ctx: Context, n: number): Generator {
+resonate.register("countdown", async function countdown(ctx: Context, n: number): Promise<void> {
   if (n <= 0) {
     console.log("done");
     return;
   }
   console.log(n);
-  yield* ctx.sleep(1000);
-  yield* ctx.rpc(countdown, n - 1);
+  await ctx.sleep(1000);
+  await ctx.rpc(countdown, n - 1);
 });
 
 // Wire up the Supabase Edge Function handler
