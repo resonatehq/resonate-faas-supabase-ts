@@ -40,3 +40,6 @@ jobs:
 
       - name: type check
         run: deno check mod.ts
+
+      - name: test
+        run: deno task test

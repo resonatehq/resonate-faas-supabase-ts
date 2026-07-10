@@ -13,7 +13,7 @@ import {
   Registry,
   WallClock,
 } from "@resonatehq/sdk";
-import { SupabaseNetwork } from "./network.ts";
+import { SupabaseNetwork } from "../network.ts";
 
 function isUrl(str: string): boolean {
   try {
@@ -192,7 +192,7 @@ export class Resonate {
 
       const status = await core.onMessage(body);
 
-      if (status.kind === "done") {
+      if (status?.kind === "done") {
         return new Response(JSON.stringify({ status: "completed" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
