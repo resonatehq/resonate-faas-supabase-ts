@@ -18,7 +18,7 @@
     "check": "deno lint && deno fmt --check",
     "fmt": "deno fmt",
     "lint": "deno lint",
-    "test": "deno test --allow-env tests/"
+    "test": "deno test --frozen --allow-env tests/"
   },
   "lint": {
     "rules": {

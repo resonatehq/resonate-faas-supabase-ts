@@ -39,7 +39,7 @@ jobs:
         run: deno lint
 
       - name: type check
-        run: deno check mod.ts
+        run: deno check --frozen mod.ts
 
       - name: test
         run: deno task test
