@@ -1,0 +1,44 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:@resonatehq/sdk@~0.11.2": "0.11.2",
+    "npm:postgres@^3.4.5": "3.4.9"
+  },
+  "npm": {
+    "@resonatehq/sdk@0.11.2": {
+      "integrity": "sha512-47VwP1MWwVEOTVdeGL2vfzbLEWbXIZF0OSxm8hxdArZKArozJ2AA8jT5ZALaoA8t00dKCKZ3NY1e0wcG5vLplQ==",
+      "dependencies": [
+        "cron-parser",
+        "eventsource"
+      ]
+    },
+    "cron-parser@5.6.1": {
+      "integrity": "sha512-QBm4o1PwZiuY7KFbVvW7FLC8bozy7YWzv+Fz6KRS7sQghzcbDZCGxr/Bc5b6TQreAoSwuWVP491dIcK0THCX6A==",
+      "dependencies": [
+        "luxon"
+      ]
+    },
+    "eventsource-parser@3.1.0": {
+      "integrity": "sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg=="
+    },
+    "eventsource@4.1.0": {
+      "integrity": "sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==",
+      "dependencies": [
+        "eventsource-parser"
+      ]
+    },
+    "luxon@3.7.2": {
+      "integrity": "sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew=="
+    },
+    "postgres@3.4.9": {
+      "integrity": "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@^1.0.19",
+      "npm:@resonatehq/sdk@~0.11.2",
+      "npm:postgres@^3.4.5"
+    ]
+  }
+}
