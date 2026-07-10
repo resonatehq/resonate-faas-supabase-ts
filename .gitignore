@@ -3,5 +3,4 @@
 !.env.example
 supabase/
 
-deno.lock
 .zed

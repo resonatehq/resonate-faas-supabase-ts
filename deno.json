@@ -1,18 +1,24 @@
 {
   "name": "@resonatehq/supabase",
-  "version": "0.4.0",
-  "exports": "./mod.ts",
+  "version": "0.4.1",
+  "exports": {
+    ".": "./mod.ts",
+    "./sync": "./sync.ts"
+  },
   "imports": {
-    "@resonatehq/sdk": "npm:@resonatehq/sdk@^0.10.0",
-    "postgres": "npm:postgres@^3.4.5"
+    "@resonatehq/sdk": "npm:@resonatehq/sdk@^0.11.2",
+    "@resonatehq/sdk/async": "npm:@resonatehq/sdk@^0.11.2/async",
+    "postgres": "npm:postgres@^3.4.5",
+    "@std/assert": "jsr:@std/assert@^1.0.19"
   },
   "publish": {
-    "include": ["mod.ts", "src/", "deno.json", "LICENSE", "README.md"]
+    "include": ["mod.ts", "sync.ts", "src/", "deno.json", "LICENSE", "README.md"]
   },
   "tasks": {
     "check": "deno lint && deno fmt --check",
     "fmt": "deno fmt",
-    "lint": "deno lint"
+    "lint": "deno lint",
+    "test": "deno test --frozen --allow-env tests/"
   },
   "lint": {
     "rules": {
